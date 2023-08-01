@@ -1,0 +1,81 @@
+#!/usr/bin/bash
+if [ -z "$1" ]; then
+	echo "Usage: $0 prefix [searchd version] [columnar version] [extra version] [buddy version]"
+	echo
+	echo 'Available tests:'
+	echo 'blogs'
+	echo 'boards'
+	echo 'news'
+	echo 'reddit'
+	echo 'reviews'
+	echo 'video'
+	echo 'vk'
+	exit 1
+fi
+
+prefix="$1"
+searchd_version=${2:-'6.0.5-230731-dc9c162da'}
+columnar_version=${3:-'2.0.5-230620-c0d2628'}
+executor_version=${4:-'0.7.3-23071405-78f52a3'}
+buddy_version=${5:-'1.0.15-23072108-b79855e'}
+
+echo "Using"
+echo " searchd: $searchd_version"
+echo " columnar: $columnar_version"
+echo " executor: $executor_version"
+echo " buddy: $buddy_version"
+
+repo_prefix='https://repo.manticoresearch.com/repository/manticoresearch_jammy_dev/dists/jammy/main/binary-amd64/'
+debs=(
+	"manticore_${searchd_version}_amd64.deb"
+	"manticore-common_${searchd_version}_all.deb"
+	"manticore-converter_${searchd_version}_amd64.deb"
+	"manticore-dev_${searchd_version}_all.deb"
+	"manticore-icudata-65l.deb"
+	"manticore-server_${searchd_version}_amd64.deb"
+	"manticore-server-core_${searchd_version}_amd64.deb"
+	"manticore-tools_${searchd_version}_amd64.deb"
+	"manticore-executor_${executor_version}_amd64.deb"
+	"manticore-buddy_${buddy_version}_all.deb"
+	"manticore-columnar-lib_${columnar_version}_amd64.deb"
+)
+mkdir -p build
+test -d build && rm -f build/*deb
+for deb in "${debs[@]}"; do
+	curl -sSL "${repo_prefix}/${deb}" > "build/${deb}"
+done
+
+# Remove old files
+for file in 'searchd-load-test' 'query-load-test'; do
+	test -f "$file.log" && rm -f "$_"
+done
+
+# Remove if we had running container to be sure
+docker rm -f manticore-load-test || true
+
+# Run the daemon with our configs
+docker create \
+	--network host \
+	--ulimit nofile=65535:65535 \
+	--ulimit nproc=65535:65535 \
+	-e 'EXTRA=1' \
+	-w '/workdir' \
+	-v "$(pwd):/workdir:rw" \
+	--name manticore-load-test \
+	--entrypoint bash \
+	-it ubuntu:jammy \
+	-c "tail -f /dev/null"
+docker start manticore-load-test
+docker exec -it manticore-load-test apt-get update -y
+docker exec -it manticore-load-test bash -c 'apt-get install -y  ./build/*deb'
+docker exec -it manticore-load-test bash -c "searchd -c manticore-load-test-${prefix}.conf"
+
+cp "tank/uris-${prefix}.txt" tank/uris-to-test.txt
+docker run -it --rm \
+	--network host \
+	-v "$(pwd)/tank:/var/loadtest/tank" \
+	direvius/yandex-tank \
+	-c /var/loadtest/tank/load-test.yml \
+	-l /var/loadtest/tank/tank.log
+
+docker rm -f manticore-load-test

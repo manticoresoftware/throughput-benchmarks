@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+import os
+import urllib.parse
+
+if not os.path.isfile('query.log'):
+	print('Cannot find query.log')
+	exit(1)
+
+route='/sql'
+with open('query.log', 'r', errors='ignore') as file:
+	for line in file.readlines():
+		if 'syntax error' in line:
+			continue
+		if ('reviews_big_no_timeout_manticore01' in line or
+		   'news_big_no_timeout_blogse11' in line or
+		   'blogs_big_no_timeout_blogse11' in line or
+		   'boards_big_se02' in line or
+		   'boards_big_se07' in line or
+		   'boards_se02' in line):
+			continue
+
+		if 'SELECT' in line:
+			sql = line[line.index('SELECT'):].rpartition(';')[0]
+			sql_encoded = urllib.parse.quote(sql)
+			payload = 'query=' + sql_encoded
+
+			# get prefix from table name
+			start = line.find("FROM") + len("FROM")
+			end = line.find("_", start)
+			prefix = line[start:end].strip()
+
+			# write to the output files
+			with open('tank/uris.txt', 'a') as f:
+				f.write(str(len(payload)) + ' ' + route + '\n')
+				f.write(payload + '\n')
+
+			with open(f'tank/uris-{prefix}.txt', 'a') as f:
+				f.write(str(len(payload)) + ' ' + route + '\n')
+				f.write(payload + '\n')
