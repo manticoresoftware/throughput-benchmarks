@@ -69,6 +69,7 @@ docker start manticore-load-test
 docker exec -it manticore-load-test apt-get update -y
 docker exec -it manticore-load-test bash -c 'apt-get install -y  ./build/*deb'
 docker exec -it manticore-load-test bash -c "searchd -c manticore-load-test-${prefix}.conf"
+sleep 5
 
 cp "tank/uris-${prefix}.txt" tank/uris-to-test.txt
 docker run -it --rm \
