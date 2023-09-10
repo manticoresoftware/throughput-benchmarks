@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+info="$1"
+searchd_version="${2:-6.2.13-230907-3a0507aee}"
+columnar_version="${3:-2.2.5-230831-e87f088}"
+executor_version="${4:-0.7.7-23081316-7723c87}"
+buddy_version="${5:-1.0.19-23081407-671fde2}"
+for prefix in blogs boards reddit vk reviews video news; do
+	tank/filter ${prefix}_ > manticore-load-test-$prefix.conf
+	tank/run-new $prefix "$info" "$searchd_version" "$columnar_version" "$executor_version" "$buddy_version"
+done

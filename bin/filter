@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+awk '/(source|index) '$1'|indexer|searchd|common/{ p=1 } /}/{ if(p) print; p=0 } p' manticore-load-test.conf

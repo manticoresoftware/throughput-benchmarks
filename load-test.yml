@@ -3,7 +3,7 @@ phantom:
   ssl: false
   load_profile:
     load_type: instances # schedule load by defining requests per second
-    schedule: step(4, 40, 4, 30)  #line(1, 20000, 5m) # starting from 1rps growing linearly to 10rps during 10 minutes
+    schedule: step(4, 48, 4, 30)  #line(1, 20000, 5m) # starting from 1rps growing linearly to 10rps during 10 minutes
   instances: 50
   header_http: "1.1"
   headers:
@@ -14,12 +14,14 @@ autostop:
   autostop:
     - http(5xx,5%,5)
     - net(xx,5%,5)
-    - limit(5m)
+    - limit(7m)
 console:
   enabled: true
 telegraf:
   enabled: false
 overload:
   enabled: true
+  job_name: "Job Name"
+  job_dsc: "Job Info"
   package: yandextank.plugins.DataUploader
   token_file: /var/loadtest/tank/overload-token.txt
